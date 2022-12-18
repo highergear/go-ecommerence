@@ -33,6 +33,7 @@ func main() {
 	protected.POST("/product", controllers.CreateProduct)
 	protected.GET("/seller/product", controllers.GetProductsBySellerId)
 	protected.GET("/seller/order", controllers.GetOrderBySellerId)
+	protected.PUT("/seller/order", controllers.UpdateOrderStatusToAccepted)
 	protected.GET("/buyer/order", controllers.GetOngoingOrderByBuyerId)
 	protected.POST("/buyer/order", controllers.CreateOrder)
 

@@ -6,6 +6,7 @@ import (
 	"github.com/highergear/go-ecommerence/models"
 	"github.com/highergear/go-ecommerence/utils"
 	"net/http"
+	"strconv"
 )
 
 type CreateOrderInput struct {
@@ -83,4 +84,49 @@ func GetOrderBySellerId(c *gin.Context) {
 	limit, offset := utils.GetLimitAndOffset(c)
 	orderList := models.GetOrderBySellerId(uid, limit, offset)
 	c.JSON(http.StatusOK, orderList)
+}
+
+func UpdateOrderStatusToAccepted(c *gin.Context) {
+	uid, role, err := utils.ExtractTokenID(c)
+	if err != nil || role != utils.Seller.String() {
+		errString := "Buyer account is unauthorized to update order status to Accepted"
+		if err != nil {
+			errString = err.Error()
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": errString})
+		return
+	}
+
+	if c.Query("order_id") == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing parameter: order_id"})
+		return
+	}
+
+	orderId, err := strconv.Atoi(c.Query("order_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	order := models.GetOrderById(uint(orderId))
+	if order.ID == 0 {
+		c.JSON(http.StatusBadRequest,
+			gin.H{"error": fmt.Sprintf("Order with ID: %d is not found", orderId)})
+		return
+	}
+
+	if order.SellerId != uid {
+		c.JSON(http.StatusBadRequest,
+			gin.H{"error": fmt.Sprintf("Order with ID: %d is not belong to seller ID: %d", orderId, uid)})
+		return
+	}
+
+	if order.Status != utils.Pending.String() {
+		c.JSON(http.StatusBadRequest,
+			gin.H{"error": fmt.Sprintf("Unable to update order with ID: %d, caused by its status is not Pending", orderId)})
+		return
+	}
+
+	updatedOrder, err := order.UpdateOrderStatusToAccepted()
+	c.JSON(http.StatusOK, updatedOrder)
 }

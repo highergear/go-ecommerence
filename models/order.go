@@ -1,6 +1,9 @@
 package models
 
-import "github.com/jinzhu/gorm"
+import (
+	"github.com/highergear/go-ecommerence/utils"
+	"github.com/jinzhu/gorm"
+)
 
 type Order struct {
 	gorm.Model
@@ -46,4 +49,23 @@ func GetOrderByBuyerId(buyerId uint, limit int, offset int) []Order {
 	}
 
 	return orderList
+}
+
+func GetOrderById(orderId uint) Order {
+	var order Order
+	err := DB.Model(Order{}).Where("id = ?", orderId).Take(&order).Error
+	if err != nil {
+		return Order{}
+	}
+
+	return order
+}
+func (o *Order) UpdateOrderStatusToAccepted() (*Order, error) {
+	var err error
+	o.Status = utils.Accepted.String()
+	err = DB.Save(&o).Error
+	if err != nil {
+		return &Order{}, err
+	}
+	return o, nil
 }
