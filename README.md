@@ -30,6 +30,13 @@ go get github.com/stretchr/testify
 go get github.com/DATA-DOG/go-sqlmock
 ```
 
+## Initial mysql table and data migration
+Before running the program for the first time, **please run the migration file** `initial_migration.sql`. 
+
+The sql script will create 4 tables: `buyers`, `sellers`, `products`, and `orders`. 
+Furthermore, initial data for table `buyers`, `sellers` and `products` will also be populated. Important to note that the password for all users in `buyers` and `sellers` table is `123`.
+
+
 
 ## API Endpoints
 
