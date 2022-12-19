@@ -1,9 +1,11 @@
-package controllers
+package controller
 
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/highergear/go-ecommerence/models"
+	"github.com/highergear/go-ecommerence/model/input"
+	"github.com/highergear/go-ecommerence/repository"
+	"github.com/highergear/go-ecommerence/service"
 	"github.com/highergear/go-ecommerence/utils"
 	"net/http"
 	"strconv"
@@ -16,6 +18,9 @@ type CreateOrderInput struct {
 	Quantity              int    `json:"quantity" binding:"required"`
 }
 
+var orderRepository = repository.NewOrderRepository()
+var orderService = service.NewOrderService(orderRepository)
+
 func CreateOrder(c *gin.Context) {
 	uid, role, err := utils.ExtractTokenID(c)
 	if err != nil || role != utils.Buyer.String() {
@@ -27,25 +32,20 @@ func CreateOrder(c *gin.Context) {
 		return
 	}
 
-	var input CreateOrderInput
-	if err := c.ShouldBindJSON(&input); err != nil {
+	var i input.CreateOrderInput
+	if err := c.ShouldBindJSON(&i); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	order := MapInputToOrder(input)
-	product := models.GetProductById(input.Items)
+	product := productService.GetProductById(i.Items)
 	if product.ID == 0 {
 		c.JSON(http.StatusBadRequest,
-			gin.H{"error": fmt.Sprintf("Product with ID: %d is not found", input.Items)})
+			gin.H{"error": fmt.Sprintf("Product with ID: %d is not found", i.Items)})
 		return
 	}
-	order.Price = product.Price
-	order.TotalPrice = float64(float32(input.Quantity) * product.Price)
-	order.BuyerId = uid
-	order.SellerId = product.SellerID
 
-	savedOrder, err := order.SaveOrder()
+	savedOrder, err := orderService.Create(i, product, uid)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -54,35 +54,33 @@ func CreateOrder(c *gin.Context) {
 	c.JSON(http.StatusOK, savedOrder)
 }
 
-func MapInputToOrder(input CreateOrderInput) models.Order {
-	order := models.Order{}
-	order.DeliverySourceAddress = input.DeliverySourceAddress
-	order.DeliveryDestAddress = input.DeliveryDestAddress
-	order.Items = input.Items
-	order.Quantity = input.Quantity
-	order.Status = utils.Pending.String()
-	return order
-}
-
 func GetOngoingOrderByBuyerId(c *gin.Context) {
-	uid, _, err := utils.ExtractTokenID(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	uid, role, err := utils.ExtractTokenID(c)
+	if err != nil || role != utils.Buyer.String() {
+		errString := "Seller account is unauthorized to list buyer's orders"
+		if err != nil {
+			errString = err.Error()
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": errString})
 		return
 	}
 	limit, offset := utils.GetLimitAndOffset(c)
-	orderList := models.GetOrderByBuyerId(uid, limit, offset)
+	orderList := orderService.GetOrderListByBuyerId(uid, limit, offset)
 	c.JSON(http.StatusOK, orderList)
 }
 
 func GetOrderBySellerId(c *gin.Context) {
-	uid, _, err := utils.ExtractTokenID(c)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	uid, role, err := utils.ExtractTokenID(c)
+	if err != nil || role != utils.Seller.String() {
+		errString := "Buyer account is unauthorized to list seller's orders"
+		if err != nil {
+			errString = err.Error()
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": errString})
 		return
 	}
 	limit, offset := utils.GetLimitAndOffset(c)
-	orderList := models.GetOrderBySellerId(uid, limit, offset)
+	orderList := orderService.GetOrderListBySellerId(uid, limit, offset)
 	c.JSON(http.StatusOK, orderList)
 }
 
@@ -108,7 +106,7 @@ func UpdateOrderStatusToAccepted(c *gin.Context) {
 		return
 	}
 
-	order := models.GetOrderById(uint(orderId))
+	order := orderService.GetOrderById(uint(orderId))
 	if order.ID == 0 {
 		c.JSON(http.StatusBadRequest,
 			gin.H{"error": fmt.Sprintf("Order with ID: %d is not found", orderId)})
@@ -127,6 +125,6 @@ func UpdateOrderStatusToAccepted(c *gin.Context) {
 		return
 	}
 
-	updatedOrder, err := order.UpdateOrderStatusToAccepted()
+	updatedOrder, err := orderService.UpdateStatusToAccepted(order)
 	c.JSON(http.StatusOK, updatedOrder)
 }

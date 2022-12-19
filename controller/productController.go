@@ -1,17 +1,16 @@
-package controllers
+package controller
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/highergear/go-ecommerence/models"
+	"github.com/highergear/go-ecommerence/model/input"
+	"github.com/highergear/go-ecommerence/repository"
+	"github.com/highergear/go-ecommerence/service"
 	"github.com/highergear/go-ecommerence/utils"
 	"net/http"
 )
 
-type CreateProductInput struct {
-	Name        string  `json:"product_name" binding:"required"`
-	Description string  `json:"product_description"`
-	Price       float32 `json:"price" binding:"required"`
-}
+var productRepository = repository.NewProductRepository()
+var productService = service.NewProductService(productRepository)
 
 func CreateProduct(c *gin.Context) {
 	uid, role, err := utils.ExtractTokenID(c)
@@ -24,21 +23,13 @@ func CreateProduct(c *gin.Context) {
 		return
 	}
 
-	var input CreateProductInput
-
-	if err := c.ShouldBindJSON(&input); err != nil {
+	var i input.CreateProductInput
+	if err := c.ShouldBindJSON(&i); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	product := models.Product{}
-	product.Name = input.Name
-	product.Description = input.Description
-	product.Price = input.Price
-	product.SellerID = uid
-
-	savedProduct, err := product.SaveProduct()
-
+	savedProduct, err := productService.Create(i, uid)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -47,9 +38,9 @@ func CreateProduct(c *gin.Context) {
 	c.JSON(http.StatusOK, savedProduct)
 }
 
-func GetProducts(c *gin.Context) {
+func GetProductList(c *gin.Context) {
 	limit, offset := utils.GetLimitAndOffset(c)
-	productList := models.GetProducts(limit, offset)
+	productList := productService.GetProductList(limit, offset)
 	c.JSON(http.StatusOK, productList)
 }
 
@@ -65,8 +56,7 @@ func GetProductsBySellerId(c *gin.Context) {
 	}
 
 	limit, offset := utils.GetLimitAndOffset(c)
-
-	productList := models.GetProductsBySellerId(uid, limit, offset)
+	productList := productService.GetProductListBySellerId(uid, limit, offset)
 
 	c.JSON(http.StatusOK, productList)
 }

@@ -1,7 +1,8 @@
-package models
+package repository
 
 import (
 	"fmt"
+	"github.com/highergear/go-ecommerence/model"
 	"github.com/highergear/go-ecommerence/utils"
 	"github.com/jinzhu/gorm"
 	"log"
@@ -27,8 +28,8 @@ func ConnectToDb(config utils.Config) {
 		log.Println("Connected to database....")
 	}
 
-	DB.AutoMigrate(&Buyer{})
-	DB.AutoMigrate(&Seller{})
-	DB.AutoMigrate(&Product{})
-	DB.AutoMigrate(&Order{})
+	DB.AutoMigrate(&model.Buyer{})
+	DB.AutoMigrate(&model.Seller{})
+	DB.AutoMigrate(&model.Product{})
+	DB.AutoMigrate(&model.Order{})
 }
