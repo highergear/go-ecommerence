@@ -52,11 +52,11 @@ func RegisterSeller(c *gin.Context) {
 		return
 	}
 
-	savedSeller, err := sellerService.Create(i)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+	savedSeller, _ := sellerService.Create(i)
+	//if err != nil {
+	//	c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	//	return
+	//}
 
 	c.JSON(http.StatusOK, savedSeller)
 }
